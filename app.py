@@ -81,9 +81,7 @@ def load_price(ticker):
 
 # ── Sidebar ────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.image("https://img.icons8.com/fluency/96/stock-market.png", width=64)
     st.title("📊 Stock Analysis")
-    st.caption("Final Project BA — Nhóm 5")
     st.divider()
     
     ticker = st.radio("Chọn cổ phiếu:", ["META", "RDDT"], horizontal=True)
