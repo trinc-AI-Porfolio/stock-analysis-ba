@@ -42,16 +42,42 @@ st.markdown("""
 @st.cache_data
 def load_data(ticker):
     path = f"data/{ticker}/{ticker}_processed.csv"
-    df = pd.read_csv(path, index_col=0, parse_dates=True)
-    df.index = pd.to_datetime(df.index)
+    df = pd.read_csv(path, index_col=0)
+    df.index = pd.to_datetime(df.index, errors="coerce")
     return df
 
 @st.cache_data
 def load_price(ticker):
     path = f"data/{ticker}/DATA_price.csv"
-    df = pd.read_csv(path, parse_dates=["Date"])
-    df = df.sort_values("Date")
-    return df
+    # yfinance CSVs have 2 meta rows before the actual header
+    # Row 0: Price/Ticker row; Row 1: Date/column-name row ; Row 2+: data
+    try:
+        raw = pd.read_csv(path, header=None)
+        # Find the row where first cell is 'Date'
+        date_row = None
+        for i, row in raw.iterrows():
+            if str(row[0]).strip().lower() == "date":
+                date_row = i
+                break
+        if date_row is not None:
+            df = pd.read_csv(path, skiprows=date_row + 1, header=None,
+                             names=raw.iloc[date_row].tolist())
+        else:
+            df = pd.read_csv(path)
+        # normalise date column
+        date_col = next((c for c in df.columns if str(c).lower() == "date"), None)
+        if date_col:
+            df = df.rename(columns={date_col: "Date"})
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+            df = df.dropna(subset=["Date"]).sort_values("Date")
+        # coerce numeric cols
+        for c in ["Open","High","Low","Close","Volume"]:
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="coerce")
+        return df
+    except Exception as e:
+        st.error(f"load_price error: {e}")
+        return pd.DataFrame()
 
 # ── Sidebar ────────────────────────────────────────────────────────────────
 with st.sidebar:
